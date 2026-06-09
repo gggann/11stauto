@@ -1,9 +1,6 @@
 # Executables
 *.exe
 
-# Large JSON files
-all.json
-
 # Dependencies
 node_modules/
 
