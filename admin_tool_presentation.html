@@ -1,0 +1,246 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>Admin Tool Proposal</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/theme/white.min.css">
+
+    <!-- Syntax highlighting -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/plugin/highlight/monokai.min.css">
+    <style>
+        .reveal h3 {
+            font-size: 1.3em;
+            margin-bottom: 30px;
+        }
+
+        .reveal h4 {
+            font-size: 1.0em;
+            margin-top: 20px;
+        }
+
+        .reveal ul {
+            font-size: 0.8em;
+        }
+
+        .reveal p {
+            font-size: 0.8em;
+        }
+
+        .img-place {
+            width: 70%;
+            height: 380px;
+            background-color: #f8f9fa;
+            border: 3px dashed #ccc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 20px auto;
+            color: #aaa;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .img-place::after {
+            content: '(이미지를 여기에 삽입하세요)';
+            font-size: 0.7em;
+            margin-top: 10px;
+            font-weight: normal;
+        }
+
+        .red-text {
+            color: #dd2222;
+            font-weight: bold;
+        }
+
+        .green-text {
+            color: #228822;
+            font-weight: bold;
+        }
+
+        .cols {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8em;
+            text-align: left;
+        }
+
+        .col {
+            width: 48%;
+        }
+
+        .small-note {
+            font-size: 0.6em;
+            color: #666;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- 1. 타이틀 -->
+            <section>
+                <h3>이커머스 상품 카테고리 관리<br>어드민 툴 (Admin Tool) 기획안</h3>
+                <p>대량 데이터 정합성 검증 및 효율적 배분 시스템</p>
+                <div class="img-place" style="height: 200px;">메인 컨셉 이미지 (비워둠)</div>
+                <p class="small-note">2026.01.29 / 기획: OOO</p>
+            </section>
+
+            <!-- 2. UI/UX: 메인 레이아웃 -->
+            <section>
+                <h3>2. UI/UX: 메인 레이아웃</h3>
+                <div class="cols">
+                    <div class="col">
+                        <h4>Layout Structure</h4>
+                        <ul>
+                            <li><strong>Header</strong>: 검색(포함/제외), 상태 필터 탭</li>
+                            <li><strong>Grid</strong>: 썸네일, 상품명, 카테고리 정보</li>
+                            <li><strong>Highlight</strong>: <span class="green-text">일치(초록)</span> / <span
+                                    class="red-text">불일치(빨강)</span> 시각화</li>
+                        </ul>
+                    </div>
+                    <div class="col">
+                        <div class="img-place" style="width: 100%; height: 300px;">전체 레이아웃 스크린샷</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. 필터링 기능 -->
+            <section>
+                <h3>3.1 고급 필터링 & 검색</h3>
+                <div class="cols">
+                    <div class="col">
+                        <ul>
+                            <li><strong>OR/AND 검색</strong>: 쉼표(<code>,</code>)로 다중 조건 검색
+                                <br><em>(예: 운동화, 나이키 → 모두 포함)</em>
+                            </li>
+                            <li><strong>제외 검색</strong>: 마이너스(<code>-</code>)로 불필요 항목 제거
+                                <br><em>(예: -아동, -리퍼)</em>
+                            </li>
+                            <li><strong>상태 필터</strong>: 미처리 / 처리완료 탭 분리</li>
+                        </ul>
+                    </div>
+                    <div class="col">
+                        <div class="img-place" style="width: 100%; height: 250px;">필터링/검색 동작 예시 이미지</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. 스마트 입력 & Hover (New) -->
+            <section>
+                <h3>3.2 스마트 입력 & Hover UI</h3>
+                <div class="cols">
+                    <div class="col">
+                        <h4>Hover Interaction</h4>
+                        <ul>
+                            <li><strong>평소</strong>: 입력창 숨김/간소화 (복잡도 ↓)</li>
+                            <li><strong>마우스 오버</strong>: 입력창 활성화 (<code>display: block</code>)</li>
+                            <li><strong>자동 완성</strong>: 2-depth 필터 칩 추천</li>
+                        </ul>
+                    </div>
+                    <div class="col">
+                        <div class="img-place" style="width: 100%; height: 300px;">Hover 전/후 비교 이미지</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. 키워드 하이라이트 & 상호작용 -->
+            <section>
+                <h3>3.3 키워드 상호작용 (Click-to-Fill)</h3>
+                <div class="cols">
+                    <div class="col">
+                        <ul>
+                            <li><strong>One-Click 입력</strong>:
+                                <br>하이라이트된 키워드 클릭 시 '수정 카테고리'에 자동 입력
+                            </li>
+                            <li><strong>Toggle 기능</strong>:
+                                <br>재클릭 시 입력 취소
+                            </li>
+                            <li><strong>안전장치</strong>:
+                                <br>성별(남/여) 등 민감 키워드는 클릭 제한
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col">
+                        <div class="img-place" style="width: 100%; height: 300px;">키워드 클릭 동작 예시 이미지</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. 정합성 검사 -->
+            <section>
+                <h3>3.4 성별/연령대 정합성 검사</h3>
+                <div
+                    style="font-size: 0.8em; text-align: left; background: #f9f9f9; padding: 20px; border-radius: 8px;">
+                    <p><strong>1. 성별 충돌 감지</strong>: 상품명 '남성' ↔ 카테고리 '여성' <span class="red-text">[경고]</span></p>
+                    <p><strong>2. 연령 충돌 감지</strong>: 성인용품 ↔ '키즈/유아' 카테고리 <span class="red-text">[경고]</span></p>
+                    <p><strong>3. 예외 허용</strong>: '남녀공용', '패밀리룩' 등은 안전하게 허용</p>
+                </div>
+                <div class="img-place" style="height: 200px;">정합성 검사 경고 팝업/UI 예시</div>
+            </section>
+
+            <!-- 7. 대량 작업 & 업데이트 (New) -->
+            <section>
+                <h3>3.5 대량 작업 & 일괄 업데이트</h3>
+                <ul>
+                    <li><strong>일괄 적용</strong>: 선택된 상품들에 동일 카테고리 적용</li>
+                    <li><strong>클립보드 복사</strong>: 엑셀 호환 포맷 지원</li>
+                    <li><strong>Batch Verification Update</strong>:
+                        <br>검수 완료된 전체 상품을 <u>한 번에 서버로 전송/저장</u>
+                        <br>('저장' 버튼 원클릭으로 일괄 처리)
+                    </li>
+                </ul>
+                <div class="img-place" style="height: 180px;">일괄 작업 툴바 영역 이미지</div>
+            </section>
+
+            <!-- 8. 작업 배분 & 페이징 (New) -->
+            <section>
+                <h3>3.7 자동 배분 & 페이징 시스템</h3>
+                <div class="cols">
+                    <div class="col">
+                        <h4>Auto-Allocation</h4>
+                        <ul>
+                            <li>미처리 상품을 작업자에게 <strong>자동 균등 배분</strong></li>
+                            <li>접속 시 본인 할당량 자동 로드 (중복 방지)</li>
+                        </ul>
+                        <h4>Pagination</h4>
+                        <ul>
+                            <li>페이지당 <strong>100개</strong> 노출 (성능 최적화)</li>
+                        </ul>
+                    </div>
+                    <div class="col">
+                        <div class="img-place" style="width: 100%; height: 300px;">작업 배분 현황 대시보드 예시</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 9. 마무리 -->
+            <section>
+                <h3>감사합니다</h3>
+                <p>문의사항 및 피드백</p>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            center: true,
+            transition: 'slide'
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [],
+    "deny": [],
+    "ask": []
+  },
+  "preferences": {
+    "default_language": "ko",
+    "communication_language": "korean",
+    "locale": "ko-KR"
+  }
+}

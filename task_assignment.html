@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务分配系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .user-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .user-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .user-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        .user-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .assign-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+        .assign-btn:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+        .assign-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            text-align: center;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 商品任务分配系统</h1>
+        <div class="user-grid" id="userGrid"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://10.240.129.13:3933';
+        const users = [
+            '张三', '李四', '王五', '赵六', '钱七',
+            '孙八', '周九', '吴十', '郑十一', '王十二',
+            '冯十三', '陈十四', '褚十五', '卫十六', '蒋十七',
+            '沈十八', '韩十九', '杨二十'
+        ];
+
+        function createUserCard(userName) {
+            return `
+                <div class="user-card">
+                    <div class="user-name">${userName}</div>
+                    <button class="assign-btn" onclick="assignTasks('${userName}', this)">
+                        分配 50 个任务
+                    </button>
+                    <div class="status" id="status-${userName}" style="display:none;"></div>
+                </div>
+            `;
+        }
+
+        async function assignTasks(userName, button) {
+            const statusEl = document.getElementById(`status-${userName}`);
+            button.disabled = true;
+            statusEl.style.display = 'block';
+            statusEl.className = 'status loading';
+            statusEl.textContent = '正在分配...';
+
+            try {
+                const response = await fetch(`${API_URL}/rpc/assign_tasks`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ p_user_name: userName, p_count: 50 })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                }
+
+                const result = await response.json();
+                statusEl.className = 'status success';
+                statusEl.textContent = `✓ 成功分配 ${result.length} 个商品`;
+                console.log(`${userName} 获得的商品:`, result);
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = `✗ 分配失败: ${error.message}`;
+                console.error(error);
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        // Initialize
+        document.getElementById('userGrid').innerHTML = users.map(createUserCard).join('');
+    </script>
+</body>
+</html>

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <!-- <link rel="icon" sizes="480x480"href="1.png" type="image/x-icon"> -->
+    <link rel="icon" type="image/png" sizes="64x64" href="1.png">
+    <script src="./jquery-3.6.0.slim.min.js" integrity="sha256-u7e5khyithlIdTpu22PHhENmPcRdFiHRjhAuHcs05RI="
+        crossorigin="anonymous"></script>
+    <script src="./axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="./vue.min.js"></script>
+    <!-- Bootstrap CSS를 먼저 로드 -->
+    <link href="./bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-KK94CHFLLe+nY2dmCWGMq91rCGa5gtU4mk92HdvYe+M/SXH301p5ILy+dN9+nJOZ" crossorigin="anonymous">
+    <!-- 우리 커스텀 CSS를 나중에 로드하여 Bootstrap을 덮어쓰기 -->
+    <link rel="stylesheet" href="t.css">
+    <script src="./bootstrap.bundle.min.js"
+        integrity="sha384-ENjdO4Dr2bkBIFxQpeoTz1HIcje39Wm4jDKdf19U8gI4ddQ3GYNS7NTKfAdVQSZe"
+        crossorigin="anonymous"></script>
+    <link rel="stylesheet" type="text/css" href="./toastify.min.css">
+    <script src="./toastify.min.js"></script>
+    <title>ID검수</title>
+</head>
+
+<body>
+    <!-- 설정 버튼을 body 직접 하위로 이동 - 완전히 독립적인 스타일 적용 -->
+    <div id="settingsButton" class="settings-btn-main">⚙️</div>
+
+    <div id="app">
+
+        <!-- ========== 사용자 선택 화면 ========== -->
+        <div v-if="!currentUser" class="user-select-overlay">
+            <div class="user-select-container">
+                <h1 class="user-select-title">📋 상품 작업 배분 시스템</h1>
+                <p class="user-select-subtitle" v-if="!isAssigning && !assignError">이름을 입력하여 검수할 상품을 받으세요</p>
+                <div v-if="isAssigning" class="assign-status loading">⏳ 작업 배분 중...</div>
+                <div v-if="assignError" class="assign-status error">✗ {{ assignError }}
+                    <button class="retry-btn" @click="assignError=''">재시도</button>
+                </div>
+
+                <!-- 사용자 입력 및 배분 버튼 -->
+                <div class="user-input-section">
+                    <input type="text" v-model="userNameInput" placeholder="이름을 입력하세요 (예: ann)" class="user-name-input"
+                        @keyup.enter="assignTasks(userNameInput)" :disabled="isAssigning" />
+                    <button class="assign-btn" @click="assignTasks(userNameInput)"
+                        :disabled="isAssigning || !userNameInput.trim()">
+                        {{ assignCount }}개 상품 배분
+                    </button>
+                    <select v-model="assignCount" @change="updateAssignCount(assignCount)"
+                        style="padding: 10px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 14px; background: white;">
+                        <option :value="20">20개</option>
+                        <option :value="30">30개</option>
+                        <option :value="50">50개</option>
+                        <option :value="100">100개</option>
+                    </select>
+                </div>
+
+                <!-- 통계 정보 표시 -->
+                <div class="stats-section">
+                    <div class="stat-item">
+                        <span class="stat-label">남은 상품：</span>
+                        <span class="stat-value">{{ remainingFreeCount.toLocaleString() }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== 사용자 전환 버튼 (검수 화면 표시) ========== -->
+        <div v-if="currentUser" class="switch-user-bar">
+            <div class="user-info-section">
+                <span class="current-user-label">👤 {{ currentUser }}</span>
+                <span class="current-task-count">현재 작업: {{ assignedCount }}개</span>
+                <span class="today-submitted-count">오늘 제출: {{ todaySubmittedCount }}개</span>
+                <span class="remaining-free-count">남은 상품: {{ remainingFreeCount.toLocaleString() }}개</span>
+                <span
+                    style="color: white; font-size: 14px; font-weight: 500; padding: 5px 12px; background: rgba(255,255,255,0.2); border-radius: 20px;">⏱
+                    {{ taskElapsed }}</span>
+                <span v-if="lastAutoSaveTime" style="color: rgba(255,255,255,0.7); font-size: 11px;">💾 {{
+                    lastAutoSaveTime }}</span>
+                <button class="stats-btn" @click="fetchDailyStats"
+                    style="margin-left: 10px; padding: 5px 10px; background: rgba(255,255,255,0.2); border: none; border-radius: 5px; color: white; cursor: pointer;">📊
+                    일일통계</button>
+            </div>
+            <div class="action-buttons">
+                <select v-model="assignCount" @change="updateAssignCount(assignCount)"
+                    style="padding: 5px 8px; border: none; border-radius: 5px; font-size: 12px; background: rgba(255,255,255,0.9); color: #333;">
+                    <option :value="20">20개</option>
+                    <option :value="30">30개</option>
+                    <option :value="50">50개</option>
+                    <option :value="100">100개</option>
+                </select>
+                <button class="submit-btn" @click="submitTasks" :disabled="isSubmitting || assignedCount === 0">
+                    {{ isSubmitting ? '제출 중...' : '작업 제출' }}
+                </button>
+                <button class="assign-new-btn" @click="assignTasks(currentUser)"
+                    :disabled="!canAssignNew || isAssigning">
+                    {{ isAssigning ? '배분 중...' : '새 작업 배분' }}
+                </button>
+                <button class="switch-user-btn" @click="switchUser">🔄 사용자 전환</button>
+            </div>
+        </div>
+
+        <!-- 일일 통계 모달 -->
+        <div v-if="showDailyStats"
+            style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: flex; align-items: center; justify-content: center;"
+            @click.self="showDailyStats = false">
+            <div
+                style="background: white; border-radius: 15px; padding: 30px; max-width: 600px; width: 90%; max-height: 70vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0; color: #333;">📊 일일 작업 통계</h3>
+                    <button @click="showDailyStats = false"
+                        style="background: none; border: none; font-size: 24px; cursor: pointer; color: #999;">✕</button>
+                </div>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6;">날짜</th>
+                            <th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6;">작업자</th>
+                            <th style="padding: 10px; text-align: right; border-bottom: 2px solid #dee2e6;">제출 수</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(stat, i) in dailyStats" :key="i"
+                            :style="{ background: stat.worker_name === currentUser ? '#e8f5e9' : (i % 2 === 0 ? '#fff' : '#fafafa') }">
+                            <td style="padding: 8px 10px; border-bottom: 1px solid #eee;">{{ stat.work_date }}</td>
+                            <td style="padding: 8px 10px; border-bottom: 1px solid #eee;">{{ stat.worker_name }}</td>
+                            <td
+                                style="padding: 8px 10px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold; color: #667eea;">
+                                {{ stat.work_count }}</td>
+                        </tr>
+                        <tr v-if="dailyStats.length === 0">
+                            <td colspan="3" style="padding: 20px; text-align: center; color: #999;">통계 데이터가 없습니다</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 설정 모달 - filter 속성 제거로 fixed 정상 작동 -->
+        <div v-if="showSettingsModal" class="modal fade show settings-modal-fixed" @click.self="closeSettingsModal">
+            <div class="modal-dialog" style="max-width: 90vw; width: 90vw;">
+                <div class="modal-content" @mouseleave="startCloseTimer" @mouseenter="cancelCloseTimer">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title"><i class="fas fa-cog me-2"></i>검색카테고리 설정</h5>
+                        <button type="button" class="btn-close btn-close-white" @click="closeSettingsModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- 표시 옵션 -->
+                        <div class="mb-4">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="showDisplayCategory" class="form-check-input"
+                                            v-model="showDisplayCategory">
+                                        <label for="showDisplayCategory" class="form-check-label">전시카테고리 표시</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="showPartner" class="form-check-input"
+                                            v-model="showPartner">
+                                        <label for="showPartner" class="form-check-label">셀러 표시</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="showStdProduct" class="form-check-input"
+                                            v-model="showStdProduct">
+                                        <label for="showStdProduct" class="form-check-label">단일상품여부 표시</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="showHighlight" class="form-check-input"
+                                            v-model="showHighlight">
+                                        <label for="showHighlight" class="form-check-label">키워드 하이라이트 표시</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="showCategoryRecommendation" class="form-check-input"
+                                            v-model="showCategoryRecommendation">
+                                        <label for="showCategoryRecommendation" class="form-check-label">추천카테고리 드롭메뉴
+                                            표시</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="showMultiSelect" class="form-check-input"
+                                            v-model="showMultiSelect">
+                                        <label for="showMultiSelect" class="form-check-label">다중 선택 모드</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="showImageOnly" class="form-check-input"
+                                            v-model="showImageOnly">
+                                        <label for="showImageOnly" class="form-check-label">이미지만 보기</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="showCorrectedCategoryInput" class="form-check-input"
+                                            v-model="showCorrectedCategoryInput" style="margin-top: 2px;">
+                                        <label for="showCorrectedCategoryInput" class="form-check-label"
+                                            style="font-size: 13px; line-height: 1.4; cursor: pointer;">수정카테고리
+                                            입력</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="showCorrectedCategoryPreview"
+                                            class="form-check-input" v-model="showCorrectedCategoryPreview"
+                                            style="margin-top: 2px;">
+                                        <label for="showCorrectedCategoryPreview" class="form-check-label"
+                                            style="font-size: 13px; line-height: 1.4; cursor: pointer;">수정카테고리
+                                            미리보기</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="showSearchCategory" class="form-check-input"
+                                            v-model="showSearchCategory">
+                                        <label for="showSearchCategory" class="form-check-label">검색카테고리 표시</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 데이터 입력 영역 -->
+                        <div class="row">
+                            <div class="col-md-4">
+                                <textarea class="form-control" id="textabc" rows="12" v-model="input"
+                                    placeholder="상품번호&#10;&#10;3229289762&#10;7771923099&#10;8019752854"
+                                    readonly></textarea>
+                                <small class="text-muted">상품 개수: {{ inputAsArray.length }}</small>
+                            </div>
+                            <div class="col-md-4">
+                                <textarea class="form-control" id="correctedCategories" rows="12"
+                                    v-model="correctedCategoriesInput"
+                                    placeholder="수정된 카테고리&#10;&#10;도서 > 자연/과학 > 수학&#10;도서 > 예술/대중문화 > 음악&#10;도서 > 소설 > 장르소설"></textarea>
+                                <small class="text-muted">카테고리 개수: {{ correctedCategoriesArray.filter(cat =>
+                                    cat.trim() !== '').length }}</small>
+                            </div>
+                            <div class="col-md-4">
+                                <textarea class="form-control" id="remarksInput" rows="12" v-model="remarksInput"
+                                    placeholder="비고&#10;&#10;특별 주의사항&#10;검토 필요&#10;확인 완료"></textarea>
+                                <small class="text-muted">비고 개수: {{ remarksArray.filter(remark => remark.trim() !==
+                                    '').length }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light" @dblclick="toggleHighlight">
+                        <button type="button" class="btn btn-warning me-5" @click="resetInputs">
+                            <i class="fas fa-refresh me-1"></i>초기화
+                        </button>
+                        <button type="button" class="btn btn-success me-2" @click="copyAllCorrectedCategories">
+                            <i class="fas fa-copy me-1"></i>수정카테고리 복사 (엑셀용)
+                        </button>
+                        <!-- <button type="button" class="btn btn-outline-secondary" @click="closeSettingsModal">
+                            <i class="fas fa-times me-1"></i>닫기
+                        </button>
+                        <button type="button" class="btn btn-primary" @click="applySettings">
+                            <i class="fas fa-check me-1"></i>적용
+                        </button> -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <template v-if="currentUser">
+            <!-- <button id="loginButton" @click="loginButton">登录</button> -->
+        </template>
+
+
+        <!-- 다중 선택 컨트롤 패널 -->
+        <div v-if="showMultiSelect" class="multi-select-panel"
+            style="position: fixed; top: 10px; left: 10px; right: 10px; z-index: 1000; background: rgba(255,255,255,0.95); border: 1px solid #007bff; border-radius: 6px; padding: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 8px; backdrop-filter: blur(10px);">
+            <div class="row align-items-center g-2">
+                <div class="col-md-3">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-primary" @click="selectAllProducts">
+                            전체 선택
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" @click="clearAllSelections">
+                            선택 해제
+                        </button>
+                        <button type="button" class="btn btn-success" @click="markSelectedAsProcessed">
+                            처리 ({{ selectedProducts.size }}개)
+                        </button>
+                    </div>
+
+                    <!-- 보기 옵션 섹션 - 컴팩트 -->
+                    <div class="btn-group btn-group-sm mt-1" role="group">
+                        <button type="button"
+                            :class="['btn', processedFilter === 'showUnprocessed' ? 'btn-info' : 'btn-outline-info']"
+                            @click="setProcessedFilter('showUnprocessed')" style="font-size: 9px; padding: 2px 6px;">
+                            미처리
+                        </button>
+                        <button type="button"
+                            :class="['btn', processedFilter === 'showOnlyProcessed' ? 'btn-info' : 'btn-outline-info']"
+                            @click="setProcessedFilter('showOnlyProcessed')" :disabled="processedProducts.size === 0"
+                            style="font-size: 9px; padding: 2px 6px;">
+                            처리완료
+                            <span class="badge bg-secondary ms-1" v-if="processedProducts.size > 0"
+                                style="font-size: 8px;">{{ processedProducts.size }}</span>
+                        </button>
+                        <button type="button"
+                            :class="['btn', processedFilter === 'all' ? 'btn-secondary' : 'btn-outline-secondary']"
+                            @click="setProcessedFilter('all')" style="font-size: 9px; padding: 2px 6px;">
+                            전체
+                        </button>
+                    </div>
+
+                    <!-- 처리완료 관리 섹션 - 컴팩트 -->
+                    <div class="mt-1" v-if="processedProducts.size > 0">
+                        <button type="button" class="btn btn-outline-danger btn-sm" @click="clearProcessedProducts"
+                            style="font-size: 8px; padding: 1px 4px;">
+                            처리완료 초기화 ({{ processedProducts.size }}개)
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text" style="font-size: 10px; padding: 4px 6px;">키워드</span>
+                        <input type="text" class="form-control" placeholder="상품명 키워드 입력"
+                            @keyup.enter="selectByProductKeywords($event.target.value)" style="font-size: 11px;">
+                        <button class="btn btn-outline-info" type="button"
+                            @click="selectByProductKeywords($event.target.previousElementSibling.value)">
+                            선택
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="input-group input-group-sm" style="position: relative;">
+                        <span class="input-group-text" style="font-size: 10px; padding: 4px 6px;">카테고리</span>
+                        <input type="text" class="form-control" v-model="bulkCategory" @input="updateBulkAutocomplete"
+                            @focus="showBulkAutocomplete = true" @blur="hideBulkAutocompleteWithDelay"
+                            @keydown="handleBulkAutocompleteKeydown" placeholder="카테고리 입력"
+                            @keyup.enter="applyBulkCategory" style="font-size: 11px;" autocomplete="off">
+                        <button class="btn btn-success" type="button" @click="applyBulkCategory">
+                            적용
+                        </button>
+
+                        <!-- 일괄 적용용 자동완성 드롭다운 -->
+                        <div v-if="showBulkAutocomplete && bulkAutocompleteResults.length > 0"
+                            class="autocomplete-dropdown"
+                            style="position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; max-height: 200px; overflow-y: auto; background: white; border: 1px solid #ddd; border-top: none; border-radius: 0 0 4px 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            <div v-for="(category, index) in bulkAutocompleteResults" :key="index"
+                                :class="['autocomplete-item', { 'autocomplete-item-selected': selectedBulkAutocompleteIndex === index }]"
+                                @mousedown.prevent="selectBulkAutocompleteItem(category)"
+                                @mouseenter="selectedBulkAutocompleteIndex = index"
+                                style="padding: 8px 12px; cursor: pointer; font-size: 12px; border-bottom: 1px solid #eee; transition: background-color 0.1s;"
+                                :style="selectedBulkAutocompleteIndex === index ? 'background-color: #e3f2fd;' : ''"
+                                v-html="highlightBulkAutocompleteMatch(category)">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-1">
+                    <button type="button" class="btn btn-sm btn-outline-danger" @click="toggleMultiSelectMode"
+                        title="다중 선택 모드 종료" style="padding: 4px 8px;">
+                        ✕
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="currentUser" class="card-container"
+            :style="{ marginTop: showMultiSelect ? '200px' : '65px', padding: '10px' }">
+            <div v-for="(v, i) in filteredInputAsArray" :key="v">
+                <ann :message="v" :idx="i" @update-deal-html="updateDealHtml" @remove="handleRemove"></ann>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="t.js"></script>
+    <!-- 图片缩略图功能模块 -->
+    <script src="image.js"></script>
+    <script>
+        // DOM이 완전히 로드된 후 실행
+        document.addEventListener('DOMContentLoaded', function () {
+            const textElement = document.querySelector("#textabc");
+            if (textElement) {
+                textElement.value = 4846606086;
+            }
+
+            // 설정 버튼 이벤트 연결 (Vue 앱 외부에 있으므로 직접 연결)
+            const settingsButton = document.getElementById('settingsButton');
+            if (settingsButton) {
+                // Vue 앱 인스턴스에 접근하여 모달 열기
+                settingsButton.addEventListener('mouseenter', function () {
+                    if (window.vueApp && window.vueApp.openSettingsModal) {
+                        window.vueApp.openSettingsModal();
+                    }
+                });
+
+                settingsButton.addEventListener('click', function () {
+                    if (window.vueApp && window.vueApp.openSettingsModal) {
+                        window.vueApp.openSettingsModal();
+                    }
+                });
+            }
+        });
+
+        // 防止 Backspace 键导致页面后退
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Backspace') {
+                const target = e.target;
+                // 检查是否在可编辑的元素中
+                const isEditable = target.tagName === 'INPUT' ||
+                    target.tagName === 'TEXTAREA' ||
+                    target.isContentEditable ||
+                    target.getAttribute('contenteditable') === 'true';
+
+                // 如果不在可编辑元素中，阻止默认行为（后退）
+                if (!isEditable) {
+                    e.preventDefault();
+                    console.log('Backspace 后退已被阻止，保护工作数据17136');
+                }
+            }
+        });
+
+        // 썸네일 기능은 image.js에서 처리됩니다
+    </script>
+
+    <!-- Font Size Control 모듈 로드 -->
+    <script type="module">
+        import { initializeFontSizeControl } from './font.js';
+        // 페이지 로드 완료 후 초기화
+        window.addEventListener('load', () => {
+            initializeFontSizeControl();
+        });
+    </script>
+</body>
+
+</html>
